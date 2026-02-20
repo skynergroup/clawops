@@ -21,6 +21,10 @@ echo "[build] extracting ISO"
 mkdir -p "$EXTRACT/autoinstall"
 cp "$SEED_DIR/user-data" "$EXTRACT/autoinstall/user-data"
 cp "$SEED_DIR/meta-data" "$EXTRACT/autoinstall/meta-data"
+if [[ -f "$SEED_DIR/openclaw-provision.sh" ]]; then
+  cp "$SEED_DIR/openclaw-provision.sh" "$EXTRACT/autoinstall/openclaw-provision.sh"
+  chmod +x "$EXTRACT/autoinstall/openclaw-provision.sh"
+fi
 
 GRUB_CFG="$EXTRACT/boot/grub/grub.cfg"
 AUTOINSTALL_ARGS=' autoinstall ds=nocloud\;s=/cdrom/autoinstall/ '
