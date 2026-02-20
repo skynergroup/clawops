@@ -23,9 +23,14 @@ cp "$SEED_DIR/user-data" "$EXTRACT/autoinstall/user-data"
 cp "$SEED_DIR/meta-data" "$EXTRACT/autoinstall/meta-data"
 
 GRUB_CFG="$EXTRACT/boot/grub/grub.cfg"
+AUTOINSTALL_ARGS=' autoinstall ds=nocloud\;s=/cdrom/autoinstall/ '
 if [[ -f "$GRUB_CFG" ]]; then
   echo "[build] patching grub for autoinstall"
-  sed -i 's#---# autoinstall ds=nocloud\\;s=/cdrom/autoinstall/ ---#g' "$GRUB_CFG"
+  if grep -q "autoinstall ds=nocloud" "$GRUB_CFG"; then
+    echo "[build] grub already contains autoinstall args"
+  else
+    sed -i "s# ---#${AUTOINSTALL_ARGS}---#g" "$GRUB_CFG"
+  fi
 else
   echo "[warn] grub.cfg not found, skipping patch"
 fi
@@ -39,19 +44,36 @@ if [[ -f "$EXTRACT/md5sum.txt" ]]; then
 fi
 
 echo "[build] repacking ISO"
-xorriso -as mkisofs \
-  -r -V 'CLAWOPS_UBUNTU_AUTO' \
-  -o "$OUTPUT_ISO" \
-  -J -l -iso-level 3 \
-  -partition_offset 16 \
-  -append_partition 2 0xef "$EXTRACT/efi.img" \
-  -appended_part_as_gpt \
-  -c '/boot.catalog' \
-  -b '/boot/grub/i386-pc/eltorito.img' \
-  -no-emul-boot -boot-load-size 4 -boot-info-table \
-  -eltorito-alt-boot \
-  -e '--interval:appended_partition_2:all::' \
-  -no-emul-boot \
-  "$EXTRACT"
+EFI_IMG=""
+for p in "$EXTRACT/efi.img" "$EXTRACT/boot/grub/efi.img"; do
+  if [[ -f "$p" ]]; then EFI_IMG="$p"; break; fi
+done
+
+if [[ -z "$EFI_IMG" ]]; then
+  echo "[build] no efi.img found, building BIOS-only ISO"
+  xorriso -as mkisofs \
+    -r -V 'CLAWOPS_UBUNTU_AUTO' \
+    -o "$OUTPUT_ISO" \
+    -J -l -iso-level 3 \
+    -c '/boot.catalog' \
+    -b '/boot/grub/i386-pc/eltorito.img' \
+    -no-emul-boot -boot-load-size 4 -boot-info-table \
+    "$EXTRACT"
+else
+  xorriso -as mkisofs \
+    -r -V 'CLAWOPS_UBUNTU_AUTO' \
+    -o "$OUTPUT_ISO" \
+    -J -l -iso-level 3 \
+    -partition_offset 16 \
+    -append_partition 2 0xef "$EFI_IMG" \
+    -appended_part_as_gpt \
+    -c '/boot.catalog' \
+    -b '/boot/grub/i386-pc/eltorito.img' \
+    -no-emul-boot -boot-load-size 4 -boot-info-table \
+    -eltorito-alt-boot \
+    -e '--interval:appended_partition_2:all::' \
+    -no-emul-boot \
+    "$EXTRACT"
+fi
 
 echo "[build] done: $OUTPUT_ISO"

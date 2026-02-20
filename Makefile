@@ -1,7 +1,7 @@
 SHELL := /bin/bash
 
-BASE_ISO_URL ?= https://releases.ubuntu.com/24.04/ubuntu-24.04.1-live-server-amd64.iso
-# Set from official SHA256SUMS for the exact base ISO version.
+BASE_ISO_URL ?= https://releases.ubuntu.com/24.04/ubuntu-24.04.4-live-server-amd64.iso
+# Optional: if empty, fetch_base_iso.sh resolves checksum from SHA256SUMS.
 BASE_ISO_SHA256 ?=
 BASE_ISO ?= build/base.iso
 OUTPUT_ISO ?= out/clawops-ubuntu-autoinstall.iso
