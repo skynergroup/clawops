@@ -1,0 +1,7 @@
+[Unit]
+Description=OpenClaw Gateway Healthcheck
+After=openclaw-gateway.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/libexec/openclaw-healthcheck.sh
