@@ -134,6 +134,7 @@ inject_overlay() {
 }
 
 # ── Patch GRUB for autoinstall ────────────────────────────────────────────────
+# Uses Python to avoid shell escaping issues with GRUB2's '\;' separator escape.
 patch_grub() {
   step "Patching GRUB for autoinstall..."
   local grub_cfg="$EXTRACT/boot/grub/grub.cfg"
@@ -144,18 +145,42 @@ patch_grub() {
     [[ -n "$grub_cfg" ]] || { warn "No grub.cfg found — skipping GRUB patch."; return 0; }
   fi
 
-  local autoinstall_args='autoinstall ds=nocloud\;s=/cdrom/autoinstall/ console=ttyS0,115200n8 '
+  python3 - "$grub_cfg" "$CLAWOPS_VERSION" << 'PYEOF'
+import sys
 
-  if grep -q "ds=nocloud" "$grub_cfg"; then
-    ok "GRUB already contains autoinstall args."
-  else
-    # Patch all linux/linuxefi boot entries
-    sed -i "s| ---| ${autoinstall_args}---|g" "$grub_cfg"
-    ok "GRUB patched."
-  fi
+path    = sys.argv[1]
+version = sys.argv[2]
 
-  # Update ClawOps menu title
-  sed -i "s/Ubuntu Server/ClawOps ${CLAWOPS_VERSION} (Ubuntu 24.04)/g" "$grub_cfg" 2>/dev/null || true
+with open(path) as f:
+    content = f.read()
+
+# Rename menu entries
+content = content.replace('Ubuntu Server', f'ClawOps {version} (Ubuntu 24.04)')
+
+# Inject autoinstall kernel params — GRUB2 requires '\;' to pass ';' to kernel.
+# Only patch if not already done.
+AUTOINSTALL = r' autoinstall ds=nocloud\;s=/cdrom/autoinstall/ console=ttyS0,115200n8 ---'
+if r'ds=nocloud\;' in content:
+    print('GRUB already patched correctly.')
+elif 'ds=nocloud' in content:
+    print('WARNING: GRUB has unescaped semicolon — fixing.')
+    content = content.replace('ds=nocloud;', r'ds=nocloud\;')
+else:
+    # Fresh patch: replace the first ' ---' on each linux line
+    lines = []
+    for line in content.splitlines():
+        stripped = line.lstrip()
+        if (stripped.startswith('linux ') or stripped.startswith('linux\t')) and ' ---' in line:
+            line = line.replace(' ---', AUTOINSTALL, 1)
+        lines.append(line)
+    content = '\n'.join(lines) + '\n'
+    print('GRUB patched.')
+
+with open(path, 'w') as f:
+    f.write(content)
+PYEOF
+
+  ok "GRUB patch complete."
 }
 
 # ── Refresh md5sum.txt ────────────────────────────────────────────────────────
