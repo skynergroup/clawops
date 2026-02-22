@@ -5,7 +5,7 @@ on:
 
 jobs:
   test:
-    runs-on: [self-hosted, linux, x64, apollo]
+    runs-on: [self-hosted, Linux, X64, apollo]
     steps:
       - name: Verify runner host
         run: |
