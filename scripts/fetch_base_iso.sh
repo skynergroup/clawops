@@ -2,9 +2,9 @@
 # fetch_base_iso.sh — Download and verify the Ubuntu Server 24.04 LTS base ISO
 set -euo pipefail
 
-# Ubuntu Server 24.04.2 LTS (Noble Numbat) — pinned release
-UBUNTU_ISO_URL="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso"
-UBUNTU_ISO_SHA256="d6dab0c3f76b9a5a410ff2f2196aa0c7588dbea7f98a1e2e4c02e2ef3c2b36a0"
+# Ubuntu Server 24.04.4 LTS (Noble Numbat) — pinned release
+UBUNTU_ISO_URL="https://releases.ubuntu.com/24.04.4/ubuntu-24.04.4-live-server-amd64.iso"
+UBUNTU_ISO_SHA256="e907d92eeec9df64163a7e454cbc8d7755e8ddc7ed42f99dbc80c40f1a138433"
 
 : "${BASE_ISO:=build/base.iso}"
 : "${SKIP_DOWNLOAD:=0}"

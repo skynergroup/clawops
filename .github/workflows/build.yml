@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: build/base.iso
-          key: ubuntu-24.04.2-server-amd64
+          key: ubuntu-24.04.4-server-amd64
 
       - name: Fetch base ISO
         run: bash scripts/fetch_base_iso.sh
