@@ -1,0 +1,90 @@
+name: Build ClawOps ISO
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'ClawOps version tag (e.g. 1.0)'
+        required: false
+        default: '1.0'
+      skip_squashfs:
+        description: 'Skip squashfs repack (faster, for testing autoinstall only)'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+
+env:
+  CLAWOPS_VERSION: ${{ github.event.inputs.version || '1.0' }}
+  SKIP_SQUASHFS: ${{ github.event.inputs.skip_squashfs || 'true' }}
+
+jobs:
+  build:
+    name: Build ISO
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y xorriso 7zip squashfs-tools curl wget
+
+      - name: Cache base ISO
+        uses: actions/cache@v4
+        with:
+          path: build/base.iso
+          key: ubuntu-24.04.2-server-amd64
+
+      - name: Fetch base ISO
+        run: bash scripts/fetch_base_iso.sh
+        env:
+          BASE_ISO: build/base.iso
+
+      - name: Build ClawOps ISO
+        run: |
+          bash build.sh
+        env:
+          BASE_ISO: build/base.iso
+          OUTPUT_ISO: out/clawops-${{ env.CLAWOPS_VERSION }}-amd64.iso
+          CLAWOPS_VERSION: ${{ env.CLAWOPS_VERSION }}
+          SKIP_SQUASHFS: ${{ env.SKIP_SQUASHFS }}
+
+      - name: Generate checksum
+        run: bash scripts/checksum.sh out/clawops-${{ env.CLAWOPS_VERSION }}-amd64.iso
+
+      - name: Verify checksum
+        run: bash scripts/verify_iso.sh out/clawops-${{ env.CLAWOPS_VERSION }}-amd64.iso
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: clawops-${{ env.CLAWOPS_VERSION }}-amd64
+          path: |
+            out/clawops-*.iso
+            out/clawops-*.sha256
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Build summary
+        run: |
+          ISO="out/clawops-${{ env.CLAWOPS_VERSION }}-amd64.iso"
+          SIZE=$(du -sh "$ISO" | cut -f1)
+          SHA=$(cat "out/clawops-${{ env.CLAWOPS_VERSION }}-amd64.sha256" | awk '{print $1}')
+          echo "## ClawOps ISO Build Complete" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Version  | ${{ env.CLAWOPS_VERSION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Size     | $SIZE |" >> $GITHUB_STEP_SUMMARY
+          echo "| SHA256   | \`$SHA\` |" >> $GITHUB_STEP_SUMMARY

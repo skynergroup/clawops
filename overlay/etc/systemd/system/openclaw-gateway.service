@@ -1,0 +1,48 @@
+[Unit]
+Description=OpenClaw Gateway
+Documentation=https://docs.openclaw.ai/gateway
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=clawops
+Group=clawops
+WorkingDirectory=/home/clawops
+Environment=HOME=/home/clawops
+Environment=OPENCLAW_WORKSPACE=/home/clawops/.openclaw/workspace
+
+# Resolve openclaw binary from npm global
+ExecStartPre=/bin/bash -c 'which openclaw || (echo "openclaw not found in PATH" && exit 1)'
+ExecStart=/bin/bash -c 'exec $(which openclaw) gateway start'
+ExecStop=/bin/bash -c 'exec $(which openclaw) gateway stop'
+ExecReload=/bin/bash -c 'exec $(which openclaw) gateway restart'
+
+Restart=on-failure
+RestartSec=5s
+TimeoutStartSec=60
+TimeoutStopSec=30
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=false
+ProtectSystem=strict
+ReadWritePaths=/home/clawops /var/lib/openclaw /var/log/openclaw /tmp
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+SystemCallArchitectures=native
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=openclaw-gateway
+
+[Install]
+WantedBy=multi-user.target

@@ -1,22 +1,47 @@
 #!/usr/bin/env bash
+# fetch_base_iso.sh — Download and verify the Ubuntu Server 24.04 LTS base ISO
 set -euo pipefail
 
-mkdir -p build
-: "${BASE_ISO_URL:?BASE_ISO_URL is required}"
+# Ubuntu Server 24.04.2 LTS (Noble Numbat) — pinned release
+UBUNTU_ISO_URL="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso"
+UBUNTU_ISO_SHA256="d6dab0c3f76b9a5a410ff2f2196aa0c7588dbea7f98a1e2e4c02e2ef3c2b36a0"
+
 : "${BASE_ISO:=build/base.iso}"
+: "${SKIP_DOWNLOAD:=0}"
 
-ISO_NAME="$(basename "$BASE_ISO_URL")"
-SUMS_URL="$(dirname "$BASE_ISO_URL")/SHA256SUMS"
+RED='\033[0;31m'; GREEN='\033[0;32m'; CYAN='\033[0;36m'; NC='\033[0m'
+step() { echo -e "${CYAN}[fetch]${NC} $*"; }
+ok()   { echo -e "${GREEN}[ok]${NC}    $*"; }
+die()  { echo -e "${RED}[error]${NC} $*" >&2; exit 1; }
 
-if [[ -z "${BASE_ISO_SHA256:-}" ]]; then
-  echo "[fetch] BASE_ISO_SHA256 not set, resolving from $SUMS_URL"
-  BASE_ISO_SHA256="$(curl -fsSL "$SUMS_URL" | awk -v n="$ISO_NAME" '$2=="*"n {print $1; exit}')"
+mkdir -p "$(dirname "$BASE_ISO")"
+
+# Check if already downloaded and valid
+if [[ -f "$BASE_ISO" ]]; then
+  step "Base ISO already exists. Verifying checksum..."
+  actual=$(sha256sum "$BASE_ISO" | awk '{print $1}')
+  if [[ "$actual" == "$UBUNTU_ISO_SHA256" ]]; then
+    ok "Checksum valid. Using cached ISO: $BASE_ISO"
+    exit 0
+  else
+    step "Checksum mismatch. Re-downloading..."
+    rm -f "$BASE_ISO"
+  fi
 fi
 
-[[ -n "${BASE_ISO_SHA256:-}" ]] || { echo "[fetch] could not resolve checksum for $ISO_NAME"; exit 1; }
+if [[ "$SKIP_DOWNLOAD" == "1" ]]; then
+  die "SKIP_DOWNLOAD=1 but no valid base ISO found at $BASE_ISO"
+fi
 
-echo "[fetch] URL: $BASE_ISO_URL"
-curl -fL --retry 3 --retry-delay 2 "$BASE_ISO_URL" -o "$BASE_ISO"
+step "Downloading Ubuntu Server 24.04.2 LTS..."
+step "URL: $UBUNTU_ISO_URL"
+curl -L --progress-bar -o "$BASE_ISO" "$UBUNTU_ISO_URL"
 
-echo "${BASE_ISO_SHA256}  ${BASE_ISO}" | sha256sum -c -
-echo "[fetch] base ISO verified"
+step "Verifying checksum..."
+actual=$(sha256sum "$BASE_ISO" | awk '{print $1}')
+if [[ "$actual" != "$UBUNTU_ISO_SHA256" ]]; then
+  rm -f "$BASE_ISO"
+  die "Checksum mismatch!\n  Expected: $UBUNTU_ISO_SHA256\n  Got:      $actual"
+fi
+
+ok "ISO downloaded and verified: $BASE_ISO ($(du -sh "$BASE_ISO" | cut -f1))"

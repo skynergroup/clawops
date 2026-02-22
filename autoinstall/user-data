@@ -1,0 +1,134 @@
+#cloud-config
+autoinstall:
+  version: 1
+
+  # ── Identity ────────────────────────────────────────────────────────────────
+  identity:
+    hostname: clawops
+    username: clawops
+    # Generate a strong password hash:
+    #   python3 -c "import crypt; print(crypt.crypt('yourpassword', crypt.mksalt(crypt.METHOD_SHA512)))"
+    password: "$6$rounds=4096$clawops$REPLACE_THIS_WITH_A_REAL_HASH"
+
+  # ── Locale ──────────────────────────────────────────────────────────────────
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+
+  # ── Network ─────────────────────────────────────────────────────────────────
+  network:
+    network:
+      version: 2
+      ethernets:
+        any:
+          match:
+            name: "en*"
+          dhcp4: true
+          dhcp6: false
+
+  # ── SSH ─────────────────────────────────────────────────────────────────────
+  ssh:
+    install-server: true
+    allow-pw: true
+    authorized-keys: []
+
+  # ── Storage ─────────────────────────────────────────────────────────────────
+  storage:
+    layout:
+      name: direct
+    swap:
+      size: 0
+
+  # ── Packages ────────────────────────────────────────────────────────────────
+  packages:
+    - curl
+    - wget
+    - git
+    - ufw
+    - fail2ban
+    - unattended-upgrades
+    - apt-transport-https
+    - ca-certificates
+    - gnupg
+    - lsb-release
+    - htop
+    - tmux
+    - jq
+    - qemu-guest-agent
+
+  # ── Late commands (run in target after install) ──────────────────────────────
+  late-commands:
+    # ── Node 22 via NodeSource ──────────────────────────────────────────────
+    - |
+      curtin in-target -- bash -c '
+        curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+        apt-get install -y nodejs
+        node --version
+      '
+
+    # ── Install OpenClaw ────────────────────────────────────────────────────
+    - |
+      curtin in-target -- bash -c '
+        npm install -g openclaw@latest
+        openclaw --version
+      '
+
+    # ── Create clawops workspace and dirs ──────────────────────────────────
+    - |
+      curtin in-target -- bash -c '
+        mkdir -p /var/lib/openclaw /var/log/openclaw /var/lib/clawops
+        chown -R clawops:clawops /var/lib/openclaw /var/log/openclaw /var/lib/clawops
+      '
+
+    # ── Install firstboot wizard ────────────────────────────────────────────
+    - cp /cdrom/overlay/usr/local/bin/clawops-setup.sh /target/usr/local/bin/clawops-setup
+    - chmod +x /target/usr/local/bin/clawops-setup
+    - cp /cdrom/overlay/etc/systemd/system/clawops-firstboot.service /target/etc/systemd/system/
+    - cp /cdrom/overlay/etc/systemd/system/openclaw-gateway.service /target/etc/systemd/system/
+    - cp /cdrom/overlay/etc/profile.d/clawops.sh /target/etc/profile.d/clawops.sh
+    - cp /cdrom/overlay/etc/motd.d/clawops /target/etc/motd.d/clawops
+
+    # ── SSH hardening ───────────────────────────────────────────────────────
+    - cp /cdrom/configs/ssh/60-clawops-hardening.conf /target/etc/ssh/sshd_config.d/
+
+    # ── UFW firewall ────────────────────────────────────────────────────────
+    - |
+      curtin in-target -- bash -c '
+        ufw default deny incoming
+        ufw default allow outgoing
+        ufw allow 22/tcp comment "SSH"
+        ufw allow 18789/tcp comment "OpenClaw Gateway"
+        ufw --force enable
+      '
+
+    # ── Fail2ban ────────────────────────────────────────────────────────────
+    - |
+      curtin in-target -- bash -c '
+        systemctl enable fail2ban
+      '
+
+    # ── Unattended upgrades ─────────────────────────────────────────────────
+    - cp /cdrom/configs/apt/20auto-upgrades /target/etc/apt/apt.conf.d/20auto-upgrades
+
+    # ── Enable services ─────────────────────────────────────────────────────
+    - |
+      curtin in-target -- bash -c '
+        systemctl enable clawops-firstboot.service
+      '
+
+    # ── MOTD: disable default Ubuntu MOTD scripts ───────────────────────────
+    - |
+      curtin in-target -- bash -c '
+        chmod -x /etc/update-motd.d/* 2>/dev/null || true
+      '
+
+  # ── User data ────────────────────────────────────────────────────────────────
+  user-data:
+    disable_root: true
+    package_update: false
+    package_upgrade: false
+
+  # ── Reporting ────────────────────────────────────────────────────────────────
+  reporting:
+    builtin:
+      type: print

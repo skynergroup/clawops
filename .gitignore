@@ -1,3 +1,6 @@
 build/
 out/
+*.iso
+*.sha256
+.env
 *.log

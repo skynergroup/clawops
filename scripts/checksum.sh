@@ -1,8 +1,13 @@
 #!/usr/bin/env bash
+# checksum.sh — Generate SHA256 checksum for the output ISO
 set -euo pipefail
 
-: "${OUTPUT_ISO:=out/clawops-ubuntu-autoinstall.iso}"
+ISO="${1:-out/clawops-1.0-amd64.iso}"
 
-[[ -f "$OUTPUT_ISO" ]] || { echo "ISO not found: $OUTPUT_ISO"; exit 1; }
-sha256sum "$OUTPUT_ISO" > "${OUTPUT_ISO}.sha256"
-echo "[checksum] wrote ${OUTPUT_ISO}.sha256"
+[[ -f "$ISO" ]] || { echo "File not found: $ISO" >&2; exit 1; }
+
+CHECKSUM_FILE="${ISO%.iso}.sha256"
+sha256sum "$ISO" > "$CHECKSUM_FILE"
+
+echo "SHA256: $(cat "$CHECKSUM_FILE")"
+echo "Written to: $CHECKSUM_FILE"

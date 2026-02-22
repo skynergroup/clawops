@@ -1,0 +1,21 @@
+[Unit]
+Description=ClawOps First-Run Setup Wizard
+Documentation=https://github.com/skynergroup/clawops
+After=network-online.target multi-user.target
+Wants=network-online.target
+ConditionPathExists=!/var/lib/clawops/.setup-done
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/clawops-setup
+ExecStartPost=/bin/bash -c 'mkdir -p /var/lib/clawops && touch /var/lib/clawops/.setup-done && systemctl disable clawops-firstboot.service'
+StandardInput=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+KillMode=process
+IgnoreSIGPIPE=no
+
+[Install]
+WantedBy=multi-user.target
