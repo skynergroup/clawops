@@ -62,6 +62,25 @@ inject_autoinstall() {
   ok "Autoinstall seed injected."
 }
 
+# ── Copy overlay + configs to ISO root (accessible at /cdrom/ during install) ─
+inject_iso_root() {
+  step "Copying overlay/ and configs/ to ISO root..."
+
+  if [[ -d "$OVERLAY_DIR" ]]; then
+    cp -r "$OVERLAY_DIR" "$EXTRACT/overlay"
+    ok "overlay/ → $EXTRACT/overlay/"
+  else
+    warn "No overlay/ directory found — skipping."
+  fi
+
+  if [[ -d "configs" ]]; then
+    cp -r "configs" "$EXTRACT/configs"
+    ok "configs/ → $EXTRACT/configs/"
+  else
+    warn "No configs/ directory found — skipping."
+  fi
+}
+
 # ── Inject overlay files into squashfs ───────────────────────────────────────
 inject_overlay() {
   step "Injecting overlay files into squashfs..."
@@ -232,6 +251,7 @@ main() {
   check_base_iso
   extract_iso
   inject_autoinstall
+  inject_iso_root
   [[ "$SKIP_SQUASHFS" != "1" ]] && inject_overlay
   patch_grub
   refresh_checksums

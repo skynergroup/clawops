@@ -80,13 +80,22 @@ autoinstall:
         chown -R clawops:clawops /var/lib/openclaw /var/log/openclaw /var/lib/clawops
       '
 
+    # ── Ensure target directories exist ────────────────────────────────────
+    - mkdir -p /target/usr/local/bin
+    - mkdir -p /target/etc/systemd/system
+    - mkdir -p /target/etc/profile.d
+    - mkdir -p /target/etc/update-motd.d
+    - mkdir -p /target/etc/ssh/sshd_config.d
+    - mkdir -p /target/var/lib/clawops
+
     # ── Install firstboot wizard ────────────────────────────────────────────
     - cp /cdrom/overlay/usr/local/bin/clawops-setup.sh /target/usr/local/bin/clawops-setup
     - chmod +x /target/usr/local/bin/clawops-setup
     - cp /cdrom/overlay/etc/systemd/system/clawops-firstboot.service /target/etc/systemd/system/
     - cp /cdrom/overlay/etc/systemd/system/openclaw-gateway.service /target/etc/systemd/system/
     - cp /cdrom/overlay/etc/profile.d/clawops.sh /target/etc/profile.d/clawops.sh
-    - cp /cdrom/overlay/etc/motd.d/clawops /target/etc/motd.d/clawops
+    - cp /cdrom/overlay/etc/motd.d/clawops /target/etc/update-motd.d/99-clawops
+    - chmod +x /target/etc/update-motd.d/99-clawops
 
     # ── SSH hardening ───────────────────────────────────────────────────────
     - cp /cdrom/configs/ssh/60-clawops-hardening.conf /target/etc/ssh/sshd_config.d/
