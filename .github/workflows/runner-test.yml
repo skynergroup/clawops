@@ -1,0 +1,28 @@
+name: Self-Hosted Runner Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: [self-hosted, linux, x64, apollo]
+    steps:
+      - name: Verify runner host
+        run: |
+          echo "Runner: $RUNNER_NAME"
+          echo "OS: $(uname -a)"
+          echo "Hostname: $(hostname)"
+          echo "User: $(whoami)"
+          echo "Docker: $(docker --version 2>/dev/null || echo 'not available')"
+          echo "Git: $(git --version)"
+          echo "Working dir: $(pwd)"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Confirm repo access
+        run: |
+          echo "Repo: $GITHUB_REPOSITORY"
+          echo "Branch: $GITHUB_REF_NAME"
+          echo "SHA: $GITHUB_SHA"
+          ls -la
