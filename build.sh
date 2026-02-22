@@ -144,7 +144,7 @@ patch_grub() {
     [[ -n "$grub_cfg" ]] || { warn "No grub.cfg found — skipping GRUB patch."; return 0; }
   fi
 
-  local autoinstall_args='autoinstall ds=nocloud\;s=/cdrom/autoinstall/ '
+  local autoinstall_args='autoinstall ds=nocloud\;s=/cdrom/autoinstall/ console=ttyS0,115200n8 '
 
   if grep -q "ds=nocloud" "$grub_cfg"; then
     ok "GRUB already contains autoinstall args."
